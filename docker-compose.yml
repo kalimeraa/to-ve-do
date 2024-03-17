@@ -1,0 +1,63 @@
+version: "3.7"
+
+services:
+  webserver:
+    image: nginx:alpine
+    container_name: webserver
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "80:80" #portal
+    volumes:
+      - ./server/:/var/www/server
+      - ./nginx/conf.d/:/etc/nginx/conf.d/
+    networks:
+      - app-network
+
+  db:
+    image: mysql
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    ports:
+        - "${MYSQL_PORT}:${MYSQL_PORT}"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+    volumes:
+      - ./db:/var/lib/mysql
+    networks:
+      - app-network
+    
+  redis:
+    image: redis:6.0-alpine
+    container_name: redis
+    working_dir: /application
+    ports:
+      - "${REDIS_PORT}:${REDIS_PORT}"
+    networks:
+      - app-network
+
+  server:
+    ports:
+      - "${SERVER_PORT}:${SERVER_PORT}"
+    restart: always
+    build:
+      context: .
+      dockerfile: server.Dockerfile
+    container_name: server
+    working_dir: /var/www/server
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./server:/var/www/server
+      - /var/www/server/vendor
+      - ./php/local.ini:/usr/local/etc/php/conf.d/local.ini
+      - ./supervisord/supervisord.conf:/etc/supervisor/conf.d/supervisord.conf
+      - ./server/.env:/var/www/server/.env
+    networks:
+      - app-network 
+
+networks:
+  app-network:
+  
