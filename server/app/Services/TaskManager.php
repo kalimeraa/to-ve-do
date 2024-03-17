@@ -21,17 +21,16 @@ class TaskManager
     {
         $totalTaskHours = $this->getTasksDuration();
 
-        $weeklyWorkableHours = $this->developers->map(function($developer) {
+        $weeklyWorkHours = $this->developers->map(function($developer) {
             return $developer->seniority * $this->getWorkHours();
         })->sum();
 
-        return ceil($totalTaskHours / $weeklyWorkableHours);
+        return ceil($totalTaskHours / $weeklyWorkHours);
     }
 
     public function handle()
     {
         $weeks = $this->getTotalWeeksToDone();
-
 
         $plan = Plan::create(
             [
@@ -49,13 +48,9 @@ class TaskManager
             foreach($this->developers as $developer) {
                 $workHours = $this->getWorkHours();
 
-                $this->tasks = $this->tasks->sortBy([
-                    ['time', 'desc'],
-                ]);
-
-                foreach($this->tasks as $taskKey => $task) {
+                foreach($this->tasks->where('difficulty','<=',$developer->seniority) as $taskKey => $task) {
                     
-                    $taskDuration = $task['time'] / $developer->seniority;
+                    $taskDuration = ($task['difficulty'] * $task['duration']) / $developer->seniority;
 
                     if($taskDuration <= $workHours) {
                         $workHours -= $taskDuration;
